@@ -1,0 +1,1 @@
+# Kafka vs RabbitMQ analysis
