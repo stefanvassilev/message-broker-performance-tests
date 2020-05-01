@@ -1,4 +1,4 @@
-package com.stefanvassilev.message.broker.config;
+package com.stefanvassilev.message.broker.rabbit.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
