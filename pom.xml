@@ -7,6 +7,7 @@
 		<module>kafka</module>
 		<module>rabbit-mq</module>
 		<module>performance-tests</module>
+		<module>performance-tests-lib</module>
 	</modules>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -44,21 +45,5 @@
 		</dependency>
 	</dependencies>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<source>13</source>
-					<target>13</target>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
 
 </project>
