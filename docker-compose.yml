@@ -21,6 +21,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   message-broker-performance-tests:
-    image: message-broker-performance-tests:latest
+    image: stefanvassilev/message-broker-performance-tests:latest
     ports:
       - "8080:8080"
