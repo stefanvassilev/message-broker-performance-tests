@@ -6,4 +6,4 @@ services: docker
 script:
   - docker build -t message-broker-performance-tests:0.0.1 .
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker push $DOCKER_USERNAME/message-broker-performance-tests
+  - docker push $DOCKER_USERNAME/message-broker-performance-tests:0.0.1
