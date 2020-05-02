@@ -1,4 +1,4 @@
-# Kafka vs RabbitMQ analysis
+# Kafka vs RabbitMQ analysis [![Build Status](https://travis-ci.com/stefanvassilev/message-broker-performance-tests.svg?branch=master)](https://travis-ci.com/stefanvassilev/message-broker-performance-tests)
 
 
 ## Test Setup 
