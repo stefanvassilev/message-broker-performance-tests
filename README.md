@@ -178,34 +178,3 @@ Error Set:
 # message length of 10000 and 200000 messages
 
 ```
-
-Giving the upper-hand to `RabbitMQ` as per latency's mean of 5.606s, versus 11.215s.
-
-
-Doing the same test again however with 20000 messages: 
-```shell script
-$ echo "POST http://localhost:8080/perf/kafka/messageCount/20000/messageLength/10000" | vegeta attack -duration=600s -max-workers=1 | tee results_kafka_big_length.bin | vegeta report
-Requests      [total, rate, throughput]         28, 0.05, 0.04
-Duration      [total, attack, wait]             10m41s, 10m12s, 29.345s
-Latencies     [min, mean, 50, 90, 95, 99, max]  21.3s, 22.897s, 21.988s, 27.58s, 29.41s, 30s, 30s
-Bytes In      [total, mean]                     2403, 85.82
-Bytes Out     [total, mean]                     0, 0.00
-Success       [ratio]                           96.43%
-Status Codes  [code:count]                      0:1  200:27
-Error Set:
-Post http://localhost:8080/perf/kafka/messageCount/20000/messageLength/10000: net/http: request canceled (Client.Timeout exceeded while awaiting headers)
-
-
-
-
-$ echo "POST http://localhost:8080/perf/rabbit/messageCount/20000/messageLength/10000" | vegeta attack -duration=600s -max-workers=1 | tee results_rabbit_big_length.bin | vegeta report
-Requests      [total, rate, throughput]         58, 0.10, 0.09
-Duration      [total, attack, wait]             10m17s, 10m4s, 13.313s
-Latencies     [min, mean, 50, 90, 95, 99, max]  9.62s, 10.64s, 10.148s, 13.015s, 13.294s, 13.935s, 13.963s
-Bytes In      [total, mean]                     5322, 91.76
-Bytes Out     [total, mean]                     0, 0.00
-Success       [ratio]                           100.00%
-Status Codes  [code:count]                      200:58
-Error Set:
-```
-
