@@ -47,6 +47,7 @@
                 <version>2.2.6.RELEASE</version>
                 <configuration>
                     <addResources>true</addResources>
+                    <mainClass>com.stefanvassilev.message.broker.performance.tests.Application</mainClass>
                 </configuration>
             </plugin>
         </plugins>
