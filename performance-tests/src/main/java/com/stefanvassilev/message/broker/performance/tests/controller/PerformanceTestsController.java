@@ -4,6 +4,7 @@ import com.stefanvassilev.message.broker.lib.aspect.MeteredAspect;
 import com.stefanvassilev.message.broker.performance.tests.domain.PerfTestResults;
 import com.stefanvassilev.message.broker.rabbit.RabbitMQConsumer;
 import com.stefanvassilev.message.broker.rabbit.kafka.configuration.consumer.KafkaConsumer;
+import org.apache.commons.lang3.RandomUtils;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -43,8 +45,8 @@ public class PerformanceTestsController {
         this.meteredAspect = meteredAspect;
     }
 
-    @PostMapping("/kafka/{messageCount}")
-    public ResponseEntity<PerfTestResults> triggerKafkaTests(@PathVariable("messageCount") Integer messageCount) throws InterruptedException {
+    @PostMapping("/kafka/messageCount/{messageCount}/messageLength/{messageLength}")
+    public ResponseEntity<PerfTestResults> triggerKafkaTests(@PathVariable("messageCount") Integer messageCount, @PathVariable("messageLength") Integer messageLength) throws InterruptedException {
         var res = new PerfTestResults();
 
 
@@ -52,7 +54,7 @@ public class PerformanceTestsController {
         synchronized (kafkaConsumer) {
             kafkaConsumer.setExpectedMessagesCount(new CountDownLatch(messageCount));
             LongStream.range(0, messageCount).forEach(i ->
-                    kafkaTemplate.send(PERFORMANCE_TOPIC_NAME, "Hello kafka"));
+                    kafkaTemplate.send(PERFORMANCE_TOPIC_NAME, new String(RandomUtils.nextBytes(messageLength), StandardCharsets.UTF_8)));
 
             kafkaConsumer.getExpectedMessagesCount().await();
             var end = System.currentTimeMillis();
@@ -65,15 +67,15 @@ public class PerformanceTestsController {
         return ResponseEntity.ok(res);
     }
 
-    @PostMapping("/rabbitMQ/{messageCount}")
-    public ResponseEntity<PerfTestResults> triggerRabbitMqTests(@PathVariable("messageCount") Integer messageCount) throws InterruptedException {
+    @PostMapping("/rabbit/messageCount/{messageCount}/messageLength/{messageLength}")
+    public ResponseEntity<PerfTestResults> triggerRabbitMqTests(@PathVariable("messageCount") Integer messageCount, @PathVariable("messageLength") Integer messageLength) throws InterruptedException {
         var res = new PerfTestResults();
 
         var start = System.currentTimeMillis();
         synchronized (rabbitMQConsumer) {
             rabbitMQConsumer.setExpectedMessagesCount(new CountDownLatch(messageCount));
 
-            LongStream.range(0, messageCount).forEach(i -> rabbitTemplate.convertAndSend(TOPIC_EXCHANGE, "perf", "Hello", new CorrelationData(UUID.randomUUID().toString())));
+            LongStream.range(0, messageCount).forEach(i -> rabbitTemplate.convertAndSend(TOPIC_EXCHANGE, "perf", new String(RandomUtils.nextBytes(messageLength), StandardCharsets.UTF_8), new CorrelationData(UUID.randomUUID().toString())));
             rabbitMQConsumer.getExpectedMessagesCount().await();
 
             var end = System.currentTimeMillis();
