@@ -25,7 +25,7 @@ public class KafkaConsumer {
         if (expectedMessagesCount == null) {
             throw new IllegalStateException("expected message count has to be set before running method");
         }
-        LOGGER.info("Received msg: {}", msg);
+        LOGGER.debug("Received msg: {}", msg);
         expectedMessagesCount.countDown();
 
     }

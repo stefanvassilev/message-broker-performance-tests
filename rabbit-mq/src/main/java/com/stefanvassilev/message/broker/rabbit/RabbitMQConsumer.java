@@ -27,7 +27,7 @@ public class RabbitMQConsumer {
             throw new IllegalStateException("expected message count has to be set before running method");
         }
 
-        LOGGER.info("Received RabbitMQ: {}", message);
+        LOGGER.debug("Received RabbitMQ: {}", message);
         expectedMessagesCount.countDown();
     }
 
