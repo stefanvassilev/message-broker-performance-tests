@@ -4,7 +4,13 @@ import com.stefanvassilev.message.broker.lib.aspect.MeteredAspect;
 import com.stefanvassilev.message.broker.performance.tests.domain.PerfTestResults;
 import com.stefanvassilev.message.broker.rabbit.RabbitMQConsumer;
 import com.stefanvassilev.message.broker.rabbit.kafka.configuration.consumer.KafkaConsumer;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.MeterBinder;
 import org.apache.commons.lang3.RandomUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.LongStream;
 
 import static com.stefanvassilev.message.broker.rabbit.config.RabbitMqConfiguration.TOPIC_EXCHANGE;
@@ -26,23 +33,27 @@ import static com.stefanvassilev.message.broker.rabbit.kafka.configuration.produ
 
 @RestController
 @RequestMapping("/perf")
-public class PerformanceTestsController {
+public class PerformanceTestsController implements MeterBinder {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceTestsController.class);
 
     private final RabbitMQConsumer rabbitMQConsumer;
     private final KafkaConsumer kafkaConsumer;
     private final MeteredAspect meteredAspect;
-    private KafkaTemplate<String, String> kafkaTemplate;
-    private RabbitTemplate rabbitTemplate;
-
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final RabbitTemplate rabbitTemplate;
+    private final MeterRegistry meterRegistry;
+    private final AtomicLong kafkaTimeTakenRatio = new AtomicLong();
+    private final AtomicLong rabbitMQTimeTakenRatio = new AtomicLong();
 
     @Autowired
-    public PerformanceTestsController(KafkaTemplate<String, String> kafkaTemplate, RabbitTemplate rabbitTemplate, RabbitMQConsumer rabbitMQConsumer, KafkaConsumer kafkaConsumer, MeteredAspect meteredAspect) {
+    public PerformanceTestsController(KafkaTemplate<String, String> kafkaTemplate, RabbitTemplate rabbitTemplate, RabbitMQConsumer rabbitMQConsumer, KafkaConsumer kafkaConsumer, MeteredAspect meteredAspect, MeterRegistry meterRegistry) {
         this.kafkaTemplate = kafkaTemplate;
         this.rabbitTemplate = rabbitTemplate;
         this.rabbitMQConsumer = rabbitMQConsumer;
         this.kafkaConsumer = kafkaConsumer;
         this.meteredAspect = meteredAspect;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/kafka/messageCount/{messageCount}/messageLength/{messageLength}")
@@ -59,7 +70,7 @@ public class PerformanceTestsController {
             kafkaConsumer.getExpectedMessagesCount().await();
             var end = System.currentTimeMillis();
 
-            setPerfTestResults(res, start, end, "kafka");
+            setPerfTestResults(res, start, end, "kafka", messageCount);
             kafkaConsumer.setExpectedMessagesCount(null);
         }
 
@@ -68,6 +79,7 @@ public class PerformanceTestsController {
     }
 
     @PostMapping("/rabbit/messageCount/{messageCount}/messageLength/{messageLength}")
+    @Timed(description = "time taken to complete rabbitMq performance tests")
     public ResponseEntity<PerfTestResults> triggerRabbitMqTests(@PathVariable("messageCount") Integer messageCount, @PathVariable("messageLength") Integer messageLength) throws InterruptedException {
         var res = new PerfTestResults();
 
@@ -79,7 +91,7 @@ public class PerformanceTestsController {
             rabbitMQConsumer.getExpectedMessagesCount().await();
 
             var end = System.currentTimeMillis();
-            setPerfTestResults(res, start, end, "RabbitMQ");
+            setPerfTestResults(res, start, end, "RabbitMQ", messageCount);
             rabbitMQConsumer.setExpectedMessagesCount(null);
         }
 
@@ -87,8 +99,9 @@ public class PerformanceTestsController {
         return ResponseEntity.ok(res);
     }
 
-    private void setPerfTestResults(PerfTestResults res, long start, long end, String messageBrokerUsed) {
-        res.setTimeTaken(end - start);
+    private void setPerfTestResults(PerfTestResults res, long start, long end, String messageBrokerUsed, Integer messageCount) {
+        long timeTaken = end - start;
+        res.setTimeTaken(timeTaken);
 
         String methodName = switch (messageBrokerUsed) {
             case "kafka" -> "listen";
@@ -97,14 +110,34 @@ public class PerformanceTestsController {
         };
 
         List<Long> executionTimeList = meteredAspect.getExecutionTimeByMethodName().get(methodName);
-        System.out.println(executionTimeList.size());
-        long avgTime = executionTimeList.stream().reduce(0L, Long::sum) / executionTimeList.size();
+        long avgTime = executionTimeList.stream().reduce(0L, Long::sum) / messageCount;
         res.setAvgRoundTripTime(avgTime);
         res.setMessageBrokerUsed(messageBrokerUsed);
         res.setMessagesSent((long) executionTimeList.size());
 
+        LOGGER.info("Reporting for {} round-trip time to prometheus: {}", messageBrokerUsed, avgTime);
+        meterRegistry.gauge(messageBrokerUsed + ".round.trip", avgTime);
+        long ratio = messageCount / timeTaken;
+        LOGGER.info("Reporting for {} processing time ratio  to prometheus: {}", messageBrokerUsed, ratio);
+
+        switch (messageBrokerUsed) {
+            case "kafka" -> kafkaTimeTakenRatio.set(ratio);
+            case "RabbitMQ" -> rabbitMQTimeTakenRatio.set(ratio);
+            default -> throw new IllegalStateException("unknown msg broker: " + messageBrokerUsed);
+        }
+
+
         meteredAspect.reset();
     }
 
+    @Override
+    public void bindTo(MeterRegistry registry) {
+        Gauge.builder("kafka.message.time_taken.ratio", kafkaTimeTakenRatio::get)
+                .description("ratio between messages count and time taken for complete round trip")
+                .register(meterRegistry);
 
+        Gauge.builder("rabbitMQ.message.time_taken.ratio", rabbitMQTimeTakenRatio::get)
+                .description("ratio between messages count and time taken for complete round trip")
+                .register(meterRegistry);
+    }
 }
