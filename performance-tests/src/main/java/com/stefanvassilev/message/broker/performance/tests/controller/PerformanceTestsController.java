@@ -57,8 +57,8 @@ public class PerformanceTestsController {
             kafkaConsumer.getExpectedMessagesCount().await();
             var end = System.currentTimeMillis();
 
-            kafkaConsumer.setExpectedMessagesCount(null);
             setPerfTestResults(res, start, end, "kafka");
+            kafkaConsumer.setExpectedMessagesCount(null);
         }
 
 

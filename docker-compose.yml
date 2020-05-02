@@ -10,7 +10,7 @@ services:
     ports:
       - "2181:2181"
   kafka:
-    build: .
+    image: wurstmeister/kafka
     ports:
       - "9092:9092"
       - '29094:29094'
@@ -20,10 +20,6 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-  message-broker-performance-tests:
-    image: stefanvassilev/message-broker-performance-tests:0.0.1
-    ports:
-      - "8080:8080"
   prometheus:
     image: prom/prometheus
     volumes:
