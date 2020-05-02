@@ -76,7 +76,7 @@ Success       [ratio]                           100.00%
 Status Codes  [code:coun
 ```
 
-Giving the upper-hand to `RabbitMQ` as per latency's mean of 4.669s versus 9.922s. `
+Giving the upper-hand to `RabbitMQ` as per latency's mean of 5.606s, versus 11.215s. `
 
 
 
